@@ -1,7 +1,7 @@
 An Introduction to Ordinal Logistic Regression
 ================
 Peter Rabinovitch
-2022-04-30 14:24:44
+2022-04-30 14:32:43
 
 ``` r
 library(tidyverse)
