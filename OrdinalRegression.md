@@ -1,29 +1,7 @@
 An Introduction to Ordinal Logistic Regression
 ================
 Peter Rabinovitch
-2022-04-30 14:19:32
-
-<style>
-
-#sidebar h2 {
-    color: #FFFFFF;
-    background-color: #808080;
-}
-
-p {
-    font-size: 16px;
-    line-height: 24px;
-    margin: 0px 0px 12px 0px;
-}
-
-h1, h2, h3, h4, h5, h6, legend {
-    font-family: Arial, sans-serif;
-    font-weight: 700;
-    color: #808080;
-}
-
-
-</style>
+2022-04-30 14:24:44
 
 ``` r
 library(tidyverse)
