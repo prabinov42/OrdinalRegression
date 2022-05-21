@@ -5,8 +5,6 @@
     library(patchwork)
     library(MASS)
 
-logit (*P*\[size&lt;*S*\]) =  − 3.92 − 2.87 × \[breed=BerneseMountainDog\] − (−3.05) × \[breed=BichonFrise\] − …
-
 # Introduction
 
 Another type of regression that I do not think gets enough love is
@@ -262,32 +260,33 @@ What this all means is that (using the square bracket Iverson notation
 that \[statement\] is equal to 1 if the statement is true, and 0
 otherwise):
 
-( P )=-3.92-2.87 -(-3.05) -
+logit (*P*\[size&lt;*S*\]) =  − 3.92 − 2.87 × \[breed=BerneseMountainDog\] − (−3.05) × \[breed=BichonFrise\] − …
 
-( P )=-1.36-2.87 -(-3.05) - …
+logit (*P*\[size&lt;*M*\]) =  − 1.36 − 2.87 × \[breed=BerneseMountainDog\] − (−3.05) × \[breed=BichonFrise\] − …
+…
 
-( P )=3.71-2.87 -(-3.05) -
+logit (*P*\[size&lt;*X**L*\]) = 3.71 − 2.87 × \[breed=BerneseMountainDog\] − (−3.05) × \[breed=BichonFrise\] − …
 
 Lets calculate one of these manually. If the dog is (say) a Dalmatian,
 then
 
-( P )=-3.92-1.38
+4logit (*P*\[size&lt;*S*\]) =  − 3.92 − 1.38 × \[breed=Dalmatian\]$
 
-( P )=-1.36-1.38
+logit (*P*\[size&lt;*M*\]) =  − 1.36 − 1.38 × \[breed=Dalmatian\]
 
-( P )=1.03-1.38
+logit (*P*\[size&lt;*L*\]) = 1.03 − 1.38 × \[breed=Dalmatian\]
 
-( P )=3.71-1.38
+logit (*P*\[size&lt;*X**L*\]) = 3.71 − 1.38 × \[breed=Dalmatian\]
 
 or
 
-( P )=-5.3
+logit (*P*\[size&lt;*S*\]) =  − 5.3
 
-( P )=-2.74
+logit (*P*\[size&lt;*M*\]) =  − 2.74
 
-( P )=-0.35
+logit (*P*\[size&lt;*L*\]) =  − 0.35
 
-( P )=2.33
+logit (*P*\[size&lt;*X**L*\]) = 2.33
 
 Or
 
@@ -421,13 +420,14 @@ Now the equations change a little to reflect the continuous predictor
 *weight*. Since this is very similar to the above, we’ll just show one
 example
 
-( P )=2.1016-0.1585
+logit (*P*\[size&lt;*M*\]) = 2.1016 − 0.1585 × weight 
 
 So for a typical Australian Cattle Dog at 15.5kg, this says
 
-( P )=2.1016-0.1585 or
+logit (*P*\[size&lt;*M*\]) = 2.1016 − 0.1585 × 15.5
+or
 
-( P )=-0.35515
+logit (*P*\[size&lt;*M*\]) =  − 0.35515
 
 We can plot
 
