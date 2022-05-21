@@ -1,16 +1,11 @@
-An Introduction to Ordinal Logistic Regression
-================
-Peter Rabinovitch
-2022-04-30 14:32:43
+    library(tidyverse)
+    library(broom)
+    library(betareg)
+    library(ggridges)
+    library(patchwork)
+    library(MASS)
 
-``` r
-library(tidyverse)
-library(broom)
-library(betareg)
-library(ggridges)
-library(patchwork)
-library(MASS)
-```
+logit (*P*\[size&lt;*S*\]) =  − 3.92 − 2.87 × \[breed=BerneseMountainDog\] − (−3.05) × \[breed=BichonFrise\] − …
 
 # Introduction
 
@@ -39,86 +34,82 @@ with some randomness creeping in to assign to neighbouring categories.
 And then if the dog is particularly tall or short the size may be
 changed accordingly.
 
-``` r
-set.seed(2022)
-n <- 1000
+    set.seed(2022)
+    n <- 1000
 
-df_breeds <- tribble(
-  ~breed, ~height_min, ~height_max, ~weight_min, ~weight_max, # male
-  "Rottweiler", 61, 69, 50, 60,
-  "Yorkshire Terrier", 20, 23, 2, 3,
-  "Siberian Husky", 54, 60, 20, 27,
-  "Bernese Mountain Dog", 64, 70, 38, 50,
-  "Chihuahua", 15, 30, 1.5, 3,
-  "Maltese", 21, 25, 3, 4,
-  "Collie", 51, 61, 18, 29,
-  "Bichon Frise", 23, 28, 6, 7,
-  "Dalmatian", 58, 61, 15, 32,
-  "Papillon", 20, 28, 2.3, 4.5,
-  "Australian Cattle Dog", 46, 51, 15, 16,
-  "Samoyed", 53, 60, 20, 30,
-  "Irish Setter", 64, 67, 27, 32,
-  "Irish Wolfhound", 81, 86, 54, 57
-) %>%
-  mutate(
-    mean_height = (height_max + height_min) / 2,
-    mean_weight = (weight_max + weight_min) / 2,
-    sd_height = height_max - mean_height,
-    sd_weight = weight_max - mean_weight,
-  )
+    df_breeds <- tribble(
+      ~breed, ~height_min, ~height_max, ~weight_min, ~weight_max, # male
+      "Rottweiler", 61, 69, 50, 60,
+      "Yorkshire Terrier", 20, 23, 2, 3,
+      "Siberian Husky", 54, 60, 20, 27,
+      "Bernese Mountain Dog", 64, 70, 38, 50,
+      "Chihuahua", 15, 30, 1.5, 3,
+      "Maltese", 21, 25, 3, 4,
+      "Collie", 51, 61, 18, 29,
+      "Bichon Frise", 23, 28, 6, 7,
+      "Dalmatian", 58, 61, 15, 32,
+      "Papillon", 20, 28, 2.3, 4.5,
+      "Australian Cattle Dog", 46, 51, 15, 16,
+      "Samoyed", 53, 60, 20, 30,
+      "Irish Setter", 64, 67, 27, 32,
+      "Irish Wolfhound", 81, 86, 54, 57
+    ) %>%
+      mutate(
+        mean_height = (height_max + height_min) / 2,
+        mean_weight = (weight_max + weight_min) / 2,
+        sd_height = height_max - mean_height,
+        sd_weight = weight_max - mean_weight,
+      )
 
-df <- df_breeds %>%
-  sample_n(n, replace = TRUE) %>%
-  mutate(
-    height = pmax(1, round(rnorm(n, mean_height, sd_height))),
-    weight = pmax(1, round(rnorm(n, mean_weight, sd_weight)))
-  )
+    df <- df_breeds %>%
+      sample_n(n, replace = TRUE) %>%
+      mutate(
+        height = pmax(1, round(rnorm(n, mean_height, sd_height))),
+        weight = pmax(1, round(rnorm(n, mean_weight, sd_weight)))
+      )
 
-df <- df %>%
-  mutate(
-    sz = case_when(
-      weight < 5 ~ "XS",
-      weight < 10 ~ "S",
-      weight < 20 ~ "M",
-      weight < 50 ~ "L",
-      TRUE ~ "XL"
-    )
-  )
+    df <- df %>%
+      mutate(
+        sz = case_when(
+          weight < 5 ~ "XS",
+          weight < 10 ~ "S",
+          weight < 20 ~ "M",
+          weight < 50 ~ "L",
+          TRUE ~ "XL"
+        )
+      )
 
-df$sz2 <- NA
-df$sz2[df$sz == "XS"] <- sample(c("XS", "S"), sum(df$sz == "XS"), replace = TRUE, prob = c(0.8, 0.2))
-df$sz2[df$sz == "S"] <- sample(c("XS", "S", "M"), sum(df$sz == "S"), replace = TRUE, prob = c(0.15, 0.7, 0.15))
-df$sz2[df$sz == "M"] <- sample(c("S", "M", "L"), sum(df$sz == "M"), replace = TRUE, prob = c(0.15, 0.7, 0.15))
-df$sz2[df$sz == "L"] <- sample(c("M", "L", "XL"), sum(df$sz == "L"), replace = TRUE, prob = c(0.15, 0.7, 0.15))
-df$sz2[df$sz == "XL"] <- sample(c("L", "XL"), sum(df$sz == "XL"), replace = TRUE, prob = c(0.2, 0.8))
+    df$sz2 <- NA
+    df$sz2[df$sz == "XS"] <- sample(c("XS", "S"), sum(df$sz == "XS"), replace = TRUE, prob = c(0.8, 0.2))
+    df$sz2[df$sz == "S"] <- sample(c("XS", "S", "M"), sum(df$sz == "S"), replace = TRUE, prob = c(0.15, 0.7, 0.15))
+    df$sz2[df$sz == "M"] <- sample(c("S", "M", "L"), sum(df$sz == "M"), replace = TRUE, prob = c(0.15, 0.7, 0.15))
+    df$sz2[df$sz == "L"] <- sample(c("M", "L", "XL"), sum(df$sz == "L"), replace = TRUE, prob = c(0.15, 0.7, 0.15))
+    df$sz2[df$sz == "XL"] <- sample(c("L", "XL"), sum(df$sz == "XL"), replace = TRUE, prob = c(0.2, 0.8))
 
-df <- df %>%
-  mutate(
-    sz3 = case_when(
-      (sz2 == "XS") & (height > (mean_height + sd_height)) ~ "S",
-      (sz2 == "S") & (height > (mean_height + sd_height)) ~ "M",
-      (sz2 == "S") & (height < (mean_height - sd_height)) ~ "XS",
-      (sz2 == "M") & (height > (mean_height + sd_height)) ~ "L",
-      (sz2 == "M") & (height < (mean_height - sd_height)) ~ "S",
-      (sz2 == "L") & (height > (mean_height + sd_height)) ~ "XL",
-      (sz2 == "L") & (height < (mean_height - sd_height)) ~ "M",
-      (sz2 == "XL") & (height < (mean_height - sd_height)) ~ "L",
-      TRUE ~ sz2
-    )
-  )
+    df <- df %>%
+      mutate(
+        sz3 = case_when(
+          (sz2 == "XS") & (height > (mean_height + sd_height)) ~ "S",
+          (sz2 == "S") & (height > (mean_height + sd_height)) ~ "M",
+          (sz2 == "S") & (height < (mean_height - sd_height)) ~ "XS",
+          (sz2 == "M") & (height > (mean_height + sd_height)) ~ "L",
+          (sz2 == "M") & (height < (mean_height - sd_height)) ~ "S",
+          (sz2 == "L") & (height > (mean_height + sd_height)) ~ "XL",
+          (sz2 == "L") & (height < (mean_height - sd_height)) ~ "M",
+          (sz2 == "XL") & (height < (mean_height - sd_height)) ~ "L",
+          TRUE ~ sz2
+        )
+      )
 
-df <- df %>%
-  dplyr::select(-sz, -sz2) %>%
-  rename(sz = sz3)
-df <- df %>% mutate(size = factor(sz, levels = c("XS", "S", "M", "L", "XL")))
-df <- df %>% dplyr::select(-contains(c("min", "max", "mean", "sd")))
-```
+    df <- df %>%
+      dplyr::select(-sz, -sz2) %>%
+      rename(sz = sz3)
+    df <- df %>% mutate(size = factor(sz, levels = c("XS", "S", "M", "L", "XL")))
+    df <- df %>% dplyr::select(-contains(c("min", "max", "mean", "sd")))
 
-We edn up with a data frame that looks like this:
+We end up with a data frame that looks like this:
 
-``` r
-df %>% sample_n(5) %>% head()
-```
+    df %>% sample_n(5) %>% head()
 
     ## # A tibble: 5 × 5
     ##   breed                height weight sz    size 
@@ -131,55 +122,49 @@ df %>% sample_n(5) %>% head()
 
 We can see the dogs sizes in the following plot.
 
-``` r
-df %>%
-  ggplot(aes(x = height, y = weight, colour = size)) +
-  geom_point() +
-  theme_minimal() +
-  ggthemes::scale_colour_colorblind() +
-  labs(
-    x = "Height (cm)",
-    y = "Weight (kg)",
-    colour = "Size"
-  )
-```
+    df %>%
+      ggplot(aes(x = height, y = weight, colour = size)) +
+      geom_point() +
+      theme_minimal() +
+      ggthemes::scale_colour_colorblind() +
+      labs(
+        x = "Height (cm)",
+        y = "Weight (kg)",
+        colour = "Size"
+      )
 
-![](OrdinalRegression_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](OrdinalRegression_files/figure-markdown_strict/unnamed-chunk-4-1.png)
 
 We can see the weights of the dogs by breed as follows:
 
-``` r
-df %>%
-  ggplot(aes(x = fct_rev(breed), y = weight)) +
-  geom_boxplot() +
-  coord_flip() +
-  theme_minimal() +
-  ggthemes::scale_colour_colorblind() +
-  labs(
-    x = "Breed",
-    y = "Weight (kg)"
-  )
-```
+    df %>%
+      ggplot(aes(x = fct_rev(breed), y = weight)) +
+      geom_boxplot() +
+      coord_flip() +
+      theme_minimal() +
+      ggthemes::scale_colour_colorblind() +
+      labs(
+        x = "Breed",
+        y = "Weight (kg)"
+      )
 
-![](OrdinalRegression_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](OrdinalRegression_files/figure-markdown_strict/unnamed-chunk-5-1.png)
 
 # Ordinal Regression
 
 The goal will be to build an ordinal regression model, predicting the
 size of a dog based on the other variables. Just doing a multinomial
 logistic would not be appropriate here, because there is an ordering to
-the sizes: XS\<S\<M\<L\<XL.
+the sizes: XS&lt;S&lt;M&lt;L&lt;XL.
 
 ## Small models
 
-### size \~breed
+### size ~breed
 
 First we’ll look at sizes as a function of breed only.
 
-``` r
-mod <- polr(size ~ breed, data = df, Hess = TRUE)
-summary(mod)
-```
+    mod <- polr(size ~ breed, data = df, Hess = TRUE)
+    summary(mod)
 
     ## Call:
     ## polr(formula = size ~ breed, data = df, Hess = TRUE)
@@ -217,14 +202,12 @@ Dog.
 Note p-values are not included. If you want them you’ll have to roll
 them in yourself:
 
-``` r
-coef(summary(mod)) %>%
-  as_tibble(rownames = "varn") %>%
-  mutate(
-    pval = pnorm(abs(`t value`), lower.tail = FALSE) * 2,
-    pval = round(pval, 5)
-  )
-```
+    coef(summary(mod)) %>%
+      as_tibble(rownames = "varn") %>%
+      mutate(
+        pval = pnorm(abs(`t value`), lower.tail = FALSE) * 2,
+        pval = round(pval, 5)
+      )
 
     ## # A tibble: 17 × 5
     ##    varn                      Value `Std. Error` `t value`    pval
@@ -252,9 +235,7 @@ So what do all these coefficients mean?
 First notice that there are two types of estimates provided,
 *coefficient* estimates and *scale* estimates:
 
-``` r
-mod %>% tidy()
-```
+    mod %>% tidy()
 
     ## # A tibble: 17 × 5
     ##    term                      estimate std.error statistic coef.type  
@@ -281,40 +262,36 @@ What this all means is that (using the square bracket Iverson notation
 that \[statement\] is equal to 1 if the statement is true, and 0
 otherwise):
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt S  \\right\]  \\right)=-3.92-2.87 \\times \\left\[\\operatorname{breed}=\\operatorname{BerneseMountainDog}\\right\]-(-3.05) \\times \\left\[\\operatorname{breed}=\\operatorname{BichonFrise}\\right\]-...](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20S%20%20%5Cright%5D%20%20%5Cright%29%3D-3.92-2.87%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BBerneseMountainDog%7D%5Cright%5D-%28-3.05%29%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BBichonFrise%7D%5Cright%5D-... "\operatorname{logit} \left( P \left[ \operatorname{size} \lt S  \right]  \right)=-3.92-2.87 \times \left[\operatorname{breed}=\operatorname{BerneseMountainDog}\right]-(-3.05) \times \left[\operatorname{breed}=\operatorname{BichonFrise}\right]-...")
+( P )=-3.92-2.87 -(-3.05) -
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt M  \\right\]  \\right)=-1.36-2.87 \\times \\left\[\\operatorname{breed}=\\operatorname{BerneseMountainDog}\\right\]-(-3.05) \\times \\left\[\\operatorname{breed}=\\operatorname{BichonFrise}\\right\]-...](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20M%20%20%5Cright%5D%20%20%5Cright%29%3D-1.36-2.87%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BBerneseMountainDog%7D%5Cright%5D-%28-3.05%29%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BBichonFrise%7D%5Cright%5D-... "\operatorname{logit} \left( P \left[ \operatorname{size} \lt M  \right]  \right)=-1.36-2.87 \times \left[\operatorname{breed}=\operatorname{BerneseMountainDog}\right]-(-3.05) \times \left[\operatorname{breed}=\operatorname{BichonFrise}\right]-...")
+( P )=-1.36-2.87 -(-3.05) - …
 
-…
-
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt XL  \\right\]  \\right)=3.71-2.87 \\times \\left\[\\operatorname{breed}=\\operatorname{BerneseMountainDog}\\right\]-(-3.05) \\times \\left\[\\operatorname{breed}=\\operatorname{BichonFrise}\\right\]-...](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20XL%20%20%5Cright%5D%20%20%5Cright%29%3D3.71-2.87%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BBerneseMountainDog%7D%5Cright%5D-%28-3.05%29%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BBichonFrise%7D%5Cright%5D-... "\operatorname{logit} \left( P \left[ \operatorname{size} \lt XL  \right]  \right)=3.71-2.87 \times \left[\operatorname{breed}=\operatorname{BerneseMountainDog}\right]-(-3.05) \times \left[\operatorname{breed}=\operatorname{BichonFrise}\right]-...")
+( P )=3.71-2.87 -(-3.05) -
 
 Lets calculate one of these manually. If the dog is (say) a Dalmatian,
 then
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt S  \\right\]  \\right)=-3.92-1.38 \\times \\left\[\\operatorname{breed}=\\operatorname{Dalmatian}\\right\]](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20S%20%20%5Cright%5D%20%20%5Cright%29%3D-3.92-1.38%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BDalmatian%7D%5Cright%5D "\operatorname{logit} \left( P \left[ \operatorname{size} \lt S  \right]  \right)=-3.92-1.38 \times \left[\operatorname{breed}=\operatorname{Dalmatian}\right]")
+( P )=-3.92-1.38
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt M  \\right\]  \\right)=-1.36-1.38 \\times \\left\[\\operatorname{breed}=\\operatorname{Dalmatian}\\right\]](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20M%20%20%5Cright%5D%20%20%5Cright%29%3D-1.36-1.38%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BDalmatian%7D%5Cright%5D "\operatorname{logit} \left( P \left[ \operatorname{size} \lt M  \right]  \right)=-1.36-1.38 \times \left[\operatorname{breed}=\operatorname{Dalmatian}\right]")
+( P )=-1.36-1.38
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt L  \\right\]  \\right)=1.03-1.38 \\times \\left\[\\operatorname{breed}=\\operatorname{Dalmatian}\\right\]](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20L%20%20%5Cright%5D%20%20%5Cright%29%3D1.03-1.38%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BDalmatian%7D%5Cright%5D "\operatorname{logit} \left( P \left[ \operatorname{size} \lt L  \right]  \right)=1.03-1.38 \times \left[\operatorname{breed}=\operatorname{Dalmatian}\right]")
+( P )=1.03-1.38
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt XL  \\right\]  \\right)=3.71-1.38 \\times \\left\[\\operatorname{breed}=\\operatorname{Dalmatian}\\right\]](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20XL%20%20%5Cright%5D%20%20%5Cright%29%3D3.71-1.38%20%5Ctimes%20%5Cleft%5B%5Coperatorname%7Bbreed%7D%3D%5Coperatorname%7BDalmatian%7D%5Cright%5D "\operatorname{logit} \left( P \left[ \operatorname{size} \lt XL  \right]  \right)=3.71-1.38 \times \left[\operatorname{breed}=\operatorname{Dalmatian}\right]")
+( P )=3.71-1.38
 
 or
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt S  \\right\]  \\right)=-5.3](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20S%20%20%5Cright%5D%20%20%5Cright%29%3D-5.3 "\operatorname{logit} \left( P \left[ \operatorname{size} \lt S  \right]  \right)=-5.3")
+( P )=-5.3
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt M  \\right\]  \\right)=-2.74](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20M%20%20%5Cright%5D%20%20%5Cright%29%3D-2.74 "\operatorname{logit} \left( P \left[ \operatorname{size} \lt M  \right]  \right)=-2.74")
+( P )=-2.74
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt L  \\right\]  \\right)=-0.35](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20L%20%20%5Cright%5D%20%20%5Cright%29%3D-0.35 "\operatorname{logit} \left( P \left[ \operatorname{size} \lt L  \right]  \right)=-0.35")
+( P )=-0.35
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt XL  \\right\]  \\right)=2.33](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20XL%20%20%5Cright%5D%20%20%5Cright%29%3D2.33 "\operatorname{logit} \left( P \left[ \operatorname{size} \lt XL  \right]  \right)=2.33")
+( P )=2.33
 
 Or
 
-``` r
-plogis(c(-5.3, -2.74, -0.35, 2.33))
-```
+    plogis(c(-5.3, -2.74, -0.35, 2.33))
 
     ## [1] 0.004966802 0.060653903 0.413382421 0.911331337
 
@@ -326,10 +303,8 @@ probability that a dalmatian is XS = 0.005, S = 0.0556787, M =
 
 Kind of a pain, eh? Happily R has a better way
 
-``` r
-new_data <- tibble(breed = c("Dalmatian"))
-mod %>% predict(new_data, type = "probs")
-```
+    new_data <- tibble(breed = c("Dalmatian"))
+    mod %>% predict(new_data, type = "probs")
 
     ##          XS           S           M           L          XL 
     ## 0.004975694 0.056036968 0.351802153 0.498680045 0.088505140
@@ -340,13 +315,11 @@ calculations above.
 Let’s look at the breed (coefficient) estimates, for example the first
 few:
 
-``` r
-mod %>%
-  tidy() %>%
-  filter(coef.type == "coefficient") %>%
-  head(3) %>%
-  dplyr::select(term, estimate)
-```
+    mod %>%
+      tidy() %>%
+      filter(coef.type == "coefficient") %>%
+      head(3) %>%
+      dplyr::select(term, estimate)
 
     ## # A tibble: 3 × 2
     ##   term                      estimate
@@ -368,12 +341,10 @@ Dogs, holding constant all other variables
 
 Next we’ll look at the scale estimates:
 
-``` r
-mod %>%
-  tidy() %>%
-  filter(coef.type == "scale") %>%
-  dplyr::select(term, estimate)
-```
+    mod %>%
+      tidy() %>%
+      filter(coef.type == "scale") %>%
+      dplyr::select(term, estimate)
 
     ## # A tibble: 4 × 2
     ##   term  estimate
@@ -385,26 +356,49 @@ mod %>%
 
 These “intercepts” can be interpreted via the above equations, and can
 be seen as the log-odds of saying a dog is S as opposed to M or larger
-(S\|M); or a dog is M or smaller as as opposed to L or XL (M\|L), etc.
+(S|M); or a dog is M or smaller as as opposed to L or XL (M|L), etc.
 
 Converting these to probabilities, using plogis (as in plogis(-1.36) =
 0.204, etc) we get
 
-| Intercept | log-odds | probability |
-|-----------|----------|-------------|
-| XS\|S     | -3.92    | 0.01945628  |
-| S\|M      | -1.36    | 0.20497984  |
-| M\|L      | 1.03     | 0.73612484  |
-| L\|XL     | 3.71     | 0.97611407  |
+<table>
+<thead>
+<tr class="header">
+<th>Intercept</th>
+<th>log-odds</th>
+<th>probability</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>XS|S</td>
+<td>-3.92</td>
+<td>0.01945628</td>
+</tr>
+<tr class="even">
+<td>S|M</td>
+<td>-1.36</td>
+<td>0.20497984</td>
+</tr>
+<tr class="odd">
+<td>M|L</td>
+<td>1.03</td>
+<td>0.73612484</td>
+</tr>
+<tr class="even">
+<td>L|XL</td>
+<td>3.71</td>
+<td>0.97611407</td>
+</tr>
+</tbody>
+</table>
 
-### size \~ weight
+### size ~ weight
 
 Next we’ll look at size as a function of weight.
 
-``` r
-mod <- polr(size ~ weight, data = df, Hess = TRUE)
-summary(mod)
-```
+    mod <- polr(size ~ weight, data = df, Hess = TRUE)
+    summary(mod)
 
     ## Call:
     ## polr(formula = size ~ weight, data = df, Hess = TRUE)
@@ -427,46 +421,42 @@ Now the equations change a little to reflect the continuous predictor
 *weight*. Since this is very similar to the above, we’ll just show one
 example
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt M  \\right\]  \\right)=2.1016-0.1585 \\times \\operatorname{weight}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20M%20%20%5Cright%5D%20%20%5Cright%29%3D2.1016-0.1585%20%5Ctimes%20%5Coperatorname%7Bweight%7D "\operatorname{logit} \left( P \left[ \operatorname{size} \lt M  \right]  \right)=2.1016-0.1585 \times \operatorname{weight}")
+( P )=2.1016-0.1585
 
 So for a typical Australian Cattle Dog at 15.5kg, this says
 
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt M  \\right\]  \\right)=2.1016-0.1585 \\times 15.5](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20M%20%20%5Cright%5D%20%20%5Cright%29%3D2.1016-0.1585%20%5Ctimes%2015.5 "\operatorname{logit} \left( P \left[ \operatorname{size} \lt M  \right]  \right)=2.1016-0.1585 \times 15.5")
+( P )=2.1016-0.1585 or
 
-or
-
-![\\operatorname{logit} \\left( P \\left\[ \\operatorname{size} \\lt M  \\right\]  \\right)=-0.35515](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Coperatorname%7Blogit%7D%20%5Cleft%28%20P%20%5Cleft%5B%20%5Coperatorname%7Bsize%7D%20%5Clt%20M%20%20%5Cright%5D%20%20%5Cright%29%3D-0.35515 "\operatorname{logit} \left( P \left[ \operatorname{size} \lt M  \right]  \right)=-0.35515")
+( P )=-0.35515
 
 We can plot
 
-``` r
-fd_s <- tibble(x = seq(1, 50, 1)) %>%
-  mutate(y = plogis(1.1932 - 0.213 * x)) %>%
-  mutate(size = "S") # S
-fd_m <- tibble(x = seq(1, 50, 1)) %>%
-  mutate(y = plogis(2.6953 - 0.213 * x)) %>%
-  mutate(size = "M") # M
-fd_l <- tibble(x = seq(1, 50, 1)) %>%
-  mutate(y = plogis(4.6171 - 0.213 * x)) %>%
-  mutate(size = "L") # L
-fd_xl <- tibble(x = seq(1, 50, 1)) %>%
-  mutate(y = plogis(9.7931 - 0.213 * x)) %>%
-  mutate(size = "XL") # XL
-fd <- bind_rows(fd_s, fd_m, fd_l, fd_xl)
+    fd_s <- tibble(x = seq(1, 50, 1)) %>%
+      mutate(y = plogis(1.1932 - 0.213 * x)) %>%
+      mutate(size = "S") # S
+    fd_m <- tibble(x = seq(1, 50, 1)) %>%
+      mutate(y = plogis(2.6953 - 0.213 * x)) %>%
+      mutate(size = "M") # M
+    fd_l <- tibble(x = seq(1, 50, 1)) %>%
+      mutate(y = plogis(4.6171 - 0.213 * x)) %>%
+      mutate(size = "L") # L
+    fd_xl <- tibble(x = seq(1, 50, 1)) %>%
+      mutate(y = plogis(9.7931 - 0.213 * x)) %>%
+      mutate(size = "XL") # XL
+    fd <- bind_rows(fd_s, fd_m, fd_l, fd_xl)
 
-fd %>%
-  ggplot(aes(x = x, y = y, colour = size)) +
-  geom_line() +
-  theme_minimal()+
-  ggthemes::scale_colour_colorblind() +
-  labs(
-    y = "Prob",
-    x = "Weight (kg)",
-    colour = 'Size'
-  )
-```
+    fd %>%
+      ggplot(aes(x = x, y = y, colour = size)) +
+      geom_line() +
+      theme_minimal()+
+      ggthemes::scale_colour_colorblind() +
+      labs(
+        y = "Prob",
+        x = "Weight (kg)",
+        colour = 'Size'
+      )
 
-![](OrdinalRegression_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](OrdinalRegression_files/figure-markdown_strict/unnamed-chunk-14-1.png)
 
 Read this as a dog of (say) 20kg is about 5% chance of being smaller
 than S, about 15% chance of being smaller than M, about 60% chance of
@@ -474,16 +464,14 @@ being less than L, about 99% chance being less than XL.
 
 ## Big Model
 
-Next we look at a more compliacated model.
+Next we look at a more complicated model.
 
-``` r
-mod <- polr(size ~ 0 + breed + weight + height, data = df, Hess = TRUE)
-```
+    mod <- polr(size ~ 0 + breed + weight + height, data = df, Hess = TRUE)
 
 This seems like a reasonable model, no? Well, sometimes R will give you
 an error that looks like this:
 
-Error in polr(size \~ 0 + breed + weight + height, data = df, : attempt
+Error in polr(size ~ 0 + breed + weight + height, data = df, : attempt
 to find suitable starting values failed
 
 When this happens, the answer is
@@ -492,24 +480,18 @@ When this happens, the answer is
 and the way to fix that is with the simple incantation of simplifying
 your model until it works, and then expanding the inits:
 
-``` r
-mod <- polr(size ~ 0 + weight + height, data = df, Hess = TRUE) # notice 'breed' is removed
-```
+    mod <- polr(size ~ 0 + weight + height, data = df, Hess = TRUE) # notice 'breed' is removed
 
     ## Warning in polr(size ~ 0 + weight + height, data = df, Hess = TRUE): an
     ## intercept is needed and assumed
 
-``` r
-inits <- c(mod$coefficients, rep(0, nrow(df_breeds)), mod$zeta) # add in inits for breed to the solution for the simpler model above
-mod <- polr(size ~ 0 + breed + weight + height, data = df, Hess = TRUE, start = inits) # set these inits
-```
+    inits <- c(mod$coefficients, rep(0, nrow(df_breeds)), mod$zeta) # add in inits for breed to the solution for the simpler model above
+    mod <- polr(size ~ 0 + breed + weight + height, data = df, Hess = TRUE, start = inits) # set these inits
 
     ## Warning in polr(size ~ 0 + breed + weight + height, data = df, Hess = TRUE, : an
     ## intercept is needed and assumed
 
-``` r
-summary(mod) # success!
-```
+    summary(mod) # success!
 
     ## Call:
     ## polr(formula = size ~ 0 + breed + weight + height, data = df, 
@@ -547,13 +529,11 @@ summary(mod) # success!
 Lets see what the model says about the sizes of two dogs, different
 breeds, but the same weight and height:
 
-``` r
-new_data <- tibble(weight = c(24.25, 24.25), breed = c("Siberian Husky", "Samoyed"), height = c(57.2, 57.2))
-mod %>%
-  predict(new_data, type = "probs") %>%
-  round(3) %>%
-  bind_cols(new_data)
-```
+    new_data <- tibble(weight = c(24.25, 24.25), breed = c("Siberian Husky", "Samoyed"), height = c(57.2, 57.2))
+    mod %>%
+      predict(new_data, type = "probs") %>%
+      round(3) %>%
+      bind_cols(new_data)
 
     ## # A tibble: 2 × 8
     ##      XS     S     M     L    XL weight breed          height
@@ -568,16 +548,14 @@ Summaries of the breeds sizes below show that a typical Husky is a
 little lighter than a Samoyed, and so it makes sense that all else being
 equal this Husky is more likely to be called a larger size.
 
-``` r
-df %>%
-  filter(breed %in% c("Samoyed", "Siberian Husky")) %>%
-  group_by(breed) %>%
-  summarize(
-    n = n(),
-    mean_height = mean(height),
-    mean_weight = mean(weight)
-  )
-```
+    df %>%
+      filter(breed %in% c("Samoyed", "Siberian Husky")) %>%
+      group_by(breed) %>%
+      summarize(
+        n = n(),
+        mean_height = mean(height),
+        mean_weight = mean(weight)
+      )
 
     ## # A tibble: 2 × 4
     ##   breed              n mean_height mean_weight
@@ -587,10 +565,8 @@ df %>%
 
 Now lets look at a really light Wolfhound:
 
-``` r
-new_data <- tibble(weight = 17, height = 83.8, breed = "Irish Wolfhound")
-mod %>% predict(new_data, type = "probs")
-```
+    new_data <- tibble(weight = 17, height = 83.8, breed = "Irish Wolfhound")
+    mod %>% predict(new_data, type = "probs")
 
     ##          XS           S           M           L          XL 
     ## 0.009095505 0.156009195 0.632553573 0.194633475 0.007708252
@@ -623,9 +599,7 @@ SessionInfo
 
 </summary>
 
-``` r
-sessionInfo()
-```
+    sessionInfo()
 
     ## R version 4.1.2 (2021-11-01)
     ## Platform: x86_64-apple-darwin17.0 (64-bit)
@@ -643,7 +617,7 @@ sessionInfo()
     ## 
     ## other attached packages:
     ##  [1] MASS_7.3-54     patchwork_1.1.1 ggridges_0.5.3  betareg_3.1-4  
-    ##  [5] broom_0.7.12    forcats_0.5.1   stringr_1.4.0   dplyr_1.0.8    
+    ##  [5] broom_0.8.0     forcats_0.5.1   stringr_1.4.0   dplyr_1.0.9    
     ##  [9] purrr_0.3.4     readr_2.1.1     tidyr_1.2.0     tibble_3.1.6   
     ## [13] ggplot2_3.3.5   tidyverse_1.3.1
     ## 
@@ -653,17 +627,17 @@ sessionInfo()
     ##  [9] plyr_1.8.6        R6_2.5.1          cellranger_1.1.0  backports_1.4.1  
     ## [13] reprex_2.0.1      stats4_4.1.2      evaluate_0.15     highr_0.9        
     ## [17] httr_1.4.2        pillar_1.6.4      rlang_1.0.2       readxl_1.4.0     
-    ## [21] rstudioapi_0.13   rmarkdown_2.13    labeling_0.4.2    munsell_0.5.0    
+    ## [21] rstudioapi_0.13   rmarkdown_2.14.1  labeling_0.4.2    munsell_0.5.0    
     ## [25] compiler_4.1.2    modelr_0.1.8      xfun_0.30         pkgconfig_2.0.3  
     ## [29] htmltools_0.5.2   nnet_7.3-16       tidyselect_1.1.2  fansi_1.0.2      
     ## [33] crayon_1.5.0      tzdb_0.2.0        dbplyr_2.1.1      withr_2.5.0      
     ## [37] grid_4.1.2        jsonlite_1.8.0    gtable_0.3.0      lifecycle_1.0.1  
-    ## [41] DBI_1.1.1         magrittr_2.0.3    scales_1.1.1      cli_3.2.0        
-    ## [45] stringi_1.7.6     farver_2.1.0      ggthemes_4.2.4    fs_1.5.1         
+    ## [41] DBI_1.1.1         magrittr_2.0.3    scales_1.2.0      cli_3.2.0        
+    ## [45] stringi_1.7.6     farver_2.1.0      ggthemes_4.2.4    fs_1.5.2         
     ## [49] flexmix_2.3-17    xml2_1.3.3        ellipsis_0.3.2    generics_0.1.2   
-    ## [53] vctrs_0.4.0       sandwich_3.0-1    Formula_1.2-4     tools_4.1.2      
+    ## [53] vctrs_0.4.1       sandwich_3.0-1    Formula_1.2-4     tools_4.1.2      
     ## [57] glue_1.6.2        hms_1.1.1         fastmap_1.1.0     yaml_2.3.5       
-    ## [61] colorspace_2.0-2  rvest_1.0.2       knitr_1.38        haven_2.4.3      
+    ## [61] colorspace_2.0-2  rvest_1.0.2       knitr_1.39        haven_2.4.3      
     ## [65] modeltools_0.2-23
 
 </details>
