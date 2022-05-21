@@ -270,7 +270,7 @@ logit (*P*\[size&lt;*X**L*\]) = 3.71 − 2.87 × \[breed=BerneseMo
 Lets calculate one of these manually. If the dog is (say) a Dalmatian,
 then
 
-4logit (*P*\[size&lt;*S*\]) =  − 3.92 − 1.38 × \[breed=Dalmatian\]$
+logit (*P*\[size&lt;*S*\]) =  − 3.92 − 1.38 × \[breed=Dalmatian\]
 
 logit (*P*\[size&lt;*M*\]) =  − 1.36 − 1.38 × \[breed=Dalmatian\]
 
